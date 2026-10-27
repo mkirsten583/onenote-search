@@ -120,7 +120,6 @@ footer{padding:4px 16px;font-size:11px;color:var(--mute);border-top:1px solid va
  <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn pri" id="btnDone">Save &amp; close</button></div>
 </dialog>
 
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <script>
 'use strict';
 /* ============ EDIT THESE LINES BEFORE PUBLISHING ============ */
@@ -341,7 +340,7 @@ async function extractText(name,buf){
 }
 
 /* ---------- auth ---------- */
-let msalApp=null, account=null, tok=null, tokExp=0;
+let authError='', msalApp=null, account=null, tok=null, tokExp=0;
 function clearStuck(){
   const cid=clientId();
   for(const st of [localStorage,sessionStorage]){
@@ -351,7 +350,15 @@ function clearStuck(){
 async function initAuth(){
   const cid=clientId();
   if(!cid||cid==='PASTE-CLIENT-ID-HERE'){ updateAuthUi(); return; }
-  msalApp=new window.msal.PublicClientApplication({auth:{clientId:cid,authority:'https://login.microsoftonline.com/consumers',redirectUri:REDIRECT,navigateToLoginRequestUrl:false},cache:{cacheLocation:'localStorage'}});
+  try{
+    if(!window.msal){
+      for(const u of ['https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js','https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.38.3/lib/msal-browser.min.js','https://unpkg.com/@azure/msal-browser@2.38.3/lib/msal-browser.min.js']){
+        try{ await loadScript(u); if(window.msal) break; }catch(e){}
+      }
+    }
+    if(!window.msal) throw new Error('the Microsoft sign-in library could not be loaded (network or content blocker?)');
+    msalApp=new window.msal.PublicClientApplication({auth:{clientId:cid,authority:'https://login.microsoftonline.com/consumers',redirectUri:REDIRECT,navigateToLoginRequestUrl:false},cache:{cacheLocation:'localStorage'}});
+  }catch(e){ authError=e.message||String(e); setStatus('Sign-in setup failed: '+authError); updateAuthUi(); return; }
   try{
     await msalApp.initialize();
     const r=await msalApp.handleRedirectPromise();
@@ -362,7 +369,11 @@ async function initAuth(){
   updateAuthUi();
 }
 async function signIn(){
-  if(!msalApp){ openSettings(); return; }
+  if(!msalApp){
+    if(authError){ alert('Cannot sign in: '+authError); return; }
+    const c=clientId(); if(!c||c==='PASTE-CLIENT-ID-HERE'){ openSettings(); return; }
+    await initAuth(); if(!msalApp){ alert('Cannot sign in: '+(authError||'sign-in did not start')); return; }
+  }
   clearStuck();
   const req={scopes:SCOPES,redirectUri:REDIRECT,prompt:'select_account'};
   try{
