@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OneNote Search</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%237719aa'/%3E%3Ccircle cx='28' cy='28' r='13' fill='none' stroke='white' stroke-width='6'/%3E%3Cpath d='M38 38l14 14' stroke='white' stroke-width='6' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{--bg:#f5f4f8;--panel:#fff;--ink:#1d1b24;--mute:#6b6878;--line:#e2dfea;--accent:#7719aa;--accent2:#f0e4f7;--mark:#ffe58a;--bad:#b3261e;--ok:#1b7f3b}
+@media(prefers-color-scheme:dark){:root{--bg:#15131b;--panel:#201d29;--ink:#ece9f4;--mute:#a09bb0;--line:#342f42;--accent:#c58bec;--accent2:#33253f;--mark:#6b5a10;--bad:#ff8a80;--ok:#6fd08a}}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column}
+button,select,input{font:inherit;color:inherit}
+header{display:flex;gap:10px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{font-weight:700;color:var(--accent);white-space:nowrap}
+#q{flex:1 1 260px;min-width:0;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px}
+#q:focus{outline:2px solid var(--accent);border-color:transparent}
+.btn{border:1px solid var(--line);background:var(--panel);padding:8px 12px;border-radius:9px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+.pill{font-size:12px;color:var(--mute);padding:3px 9px;border:1px solid var(--line);border-radius:99px;white-space:nowrap}
+.filters{display:flex;gap:8px;padding:8px 16px;flex-wrap:wrap;align-items:center;background:var(--panel);border-bottom:1px solid var(--line)}
+.filters select{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);max-width:230px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--bg);padding:6px 10px;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+#prog{display:none;padding:8px 16px;background:var(--accent2);border-bottom:1px solid var(--line);font-size:13px}
+#prog .bar{height:6px;background:var(--line);border-radius:4px;margin:5px 0;overflow:hidden}
+#prog .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+main{flex:1;min-height:0;display:flex}
+#results{flex:0 0 44%;max-width:560px;overflow:auto;padding:12px 16px}
+#reader{flex:1;overflow:auto;padding:16px 22px;background:var(--panel);border-left:1px solid var(--line)}
+.sum{color:var(--mute);font-size:13px;margin:0 0 10px}
+.res{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 13px;margin-bottom:9px;cursor:pointer}
+.res:hover,.res.sel{border-color:var(--accent)}
+.res h3{margin:0 0 2px;font-size:15.5px}
+.crumb{color:var(--mute);font-size:12px}
+.snip{margin-top:5px;font-size:13.5px;color:var(--ink);overflow-wrap:anywhere}
+.badge{display:inline-block;font-size:11px;background:var(--accent2);color:var(--accent);border-radius:6px;padding:1px 7px;margin-right:5px}
+mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
+.empty{color:var(--mute);text-align:center;margin:40px 10px}
+.empty b{color:var(--ink)}
+.tips{display:inline-block;text-align:left;font-size:13px;margin-top:10px}
+#reader h2{margin:0 0 4px}
+.rbar{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+.txt{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14.5px}
+details{border:1px solid var(--line);border-radius:10px;margin:10px 0;padding:6px 12px}
+summary{cursor:pointer;font-weight:600}
+.warn{color:var(--bad)}.ok{color:var(--ok)}
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink);max-width:640px;width:calc(100% - 24px);padding:18px 20px}
+dialog::backdrop{background:#0008}
+dialog label{display:block;margin:10px 0 3px;font-weight:600;font-size:13px}
+dialog input[type=text],dialog input[type=number]{width:100%;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+dialog h4{margin:16px 0 4px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.small{font-size:12.5px;color:var(--mute)}
+code{background:var(--accent2);padding:1px 5px;border-radius:5px;font-size:12.5px}
+footer{padding:4px 16px;font-size:11px;color:var(--mute);border-top:1px solid var(--line);background:var(--panel)}
+#back{display:none}
+@media(max-width:820px){
+ main{display:block;position:relative}
+ #results{max-width:none;height:100%}
+ #reader{position:absolute;inset:0;display:none;border:0}
+ body.reading #reader{display:block}
+ body.reading #results{display:none}
+ #back{display:inline-block}
+}
+</style>
+</head>
+<body>
+<header>
+ <span class="brand">📓 OneNote Search</span>
+ <input id="q" type="search" placeholder='Search your notes and attachments…  ("exact phrase"  -exclude)' autocomplete="off">
+ <button class="btn pri" id="btnSync">Sync</button>
+ <span class="pill" id="pill">Local only</span>
+ <button class="btn" id="btnAuth">Sign in</button>
+ <button class="btn" id="btnSet" title="Settings">⚙</button>
+</header>
+<div class="filters">
+ <select id="nbSel" title="Notebook"><option value="">All notebooks</option></select>
+ <select id="secSel" title="Section"><option value="">All sections</option></select>
+ <span class="seg" id="srcSeg"><button data-v="all" class="on">All</button><button data-v="pages">Pages</button><button data-v="atts">Attachments</button></span>
+ <select id="modeSel" title="Matching"><option value="all">All words</option><option value="any">Any word</option></select>
+ <select id="sortSel" title="Sort"><option value="rel">Best match</option><option value="new">Newest edited</option><option value="old">Oldest edited</option></select>
+</div>
+<div id="prog"><div id="progTxt"></div><div class="bar"><i id="progBar"></i></div><button class="btn" id="btnCancel">Cancel</button></div>
+<main>
+ <div id="results"></div>
+ <div id="reader"><div class="empty">Select a result to read the page here.</div></div>
+</main>
+<footer id="foot"></footer>
+
+<dialog id="dlg">
+ <h3 style="margin:0 0 6px">Settings</h3>
+ <label>Azure application (client) ID</label>
+ <input type="text" id="setCid" placeholder="paste the client ID of your OneNote Search app registration">
+ <div class="small">Redirect URI to register (Single-page application): <code id="redir"></code></div>
+
+ <h4>Notebooks to index</h4>
+ <div class="row"><button class="btn" id="btnLoadNb">Load my notebooks</button></div>
+ <div id="nbList" class="small">Not loaded yet. If none are ticked, every notebook is indexed.</div>
+
+ <h4>Attachments</h4>
+ <label style="font-weight:400"><input type="checkbox" id="setAtt"> Read text inside attached files (PDF, Word, PowerPoint, Excel, text)</label>
+ <label>Skip attachments larger than (MB)</label>
+ <input type="number" id="setMax" min="1" max="200">
+
+ <h4>Index backup / sync between devices</h4>
+ <label>OneDrive path</label>
+ <input type="text" id="setPath">
+ <label style="font-weight:400"><input type="checkbox" id="setAuto"> Save index to OneDrive after each sync</label>
+ <div class="row"><button class="btn" id="btnSave">Save index to OneDrive now</button><button class="btn" id="btnLoad">Load index from OneDrive</button></div>
+
+ <h4>Maintenance</h4>
+ <div class="row"><button class="btn" id="btnFull">Full re-sync (re-read every page)</button><button class="btn" id="btnClear">Clear local index</button></div>
+ <details id="health"><summary>Index health</summary><div id="healthBody" class="small"></div></details>
+
+ <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn pri" id="btnDone">Save &amp; close</button></div>
+</dialog>
+
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
+<script>
+'use strict';
+/* ============ EDIT THESE LINES BEFORE PUBLISHING ============ */
+const DEFAULT_CLIENT_ID = '2b5e67b2-cd02-466f-9bac-5f945686f41f';   // can also be pasted in Settings (stored in this browser)
+const DEFAULT_INDEX_PATH = 'marc.kirsten/Browser Tools/OneNote/onenote-index.json.gz';
+/* ============================================================ */
+const VERSION = '2026-10-27 · onenote search v1';
+const SCOPES = ['User.Read','Notes.Read','Files.ReadWrite'];
+const LS_SET = 'onenote-search-settings-v1';
+const SCHEMA = 1;
+const GRAPH = 'https://graph.microsoft.com/v1.0';
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+const fmtDate = s => { try{ return new Date(s).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}); }catch(e){ return ''; } };
+const p = rq => new Promise((res,rej)=>{ rq.onsuccess=()=>res(rq.result); rq.onerror=()=>rej(rq.error); });
+const framed = (()=>{ try{ return window.self!==window.top; }catch(e){ return true; } })();
+
+let settings = (()=>{ try{ return Object.assign({clientId:'',notebooks:[],inclAtt:true,maxAttMB:25,indexPath:DEFAULT_INDEX_PATH,autoSave:true},JSON.parse(localStorage.getItem(LS_SET)||'{}')); }catch(e){ return {clientId:'',notebooks:[],inclAtt:true,maxAttMB:25,indexPath:DEFAULT_INDEX_PATH,autoSave:true}; } })();
+const saveSettings = () => { try{ localStorage.setItem(LS_SET,JSON.stringify(settings)); }catch(e){} };
+const clientId = () => (settings.clientId||DEFAULT_CLIENT_ID||'').trim();
+const REDIRECT = window.location.origin + window.location.pathname;
+
+/* ---------- IndexedDB ---------- */
+const IDB = {
+  db:null,
+  open(){ return new Promise((res,rej)=>{ const r=indexedDB.open('onenote-search-db',1);
+    r.onupgradeneeded=()=>{ r.result.createObjectStore('docs',{keyPath:'id'}); r.result.createObjectStore('kv'); };
+    r.onsuccess=()=>{ this.db=r.result; res(); }; r.onerror=()=>rej(r.error); }); },
+  st(n,m){ return this.db.transaction(n,m||'readonly').objectStore(n); },
+  all(){ return p(this.st('docs').getAll()); },
+  put(d){ return p(this.st('docs','readwrite').put(d)); },
+  del(id){ return p(this.st('docs','readwrite').delete(id)); },
+  clear(){ return p(this.st('docs','readwrite').clear()); },
+  get(k){ return p(this.st('kv').get(k)); },
+  set(k,v){ return p(this.st('kv','readwrite').put(v,k)); }
+};
+
+/* ---------- text + index ---------- */
+const stem = t => { if(t.length>4&&t.endsWith('ies')) return t.slice(0,-3)+'y'; if(t.length>3&&t.endsWith('s')&&!t.endsWith('ss')) return t.slice(0,-1); return t; };
+const tokenize = s => ((s||'').toLowerCase().match(/[a-z0-9\u00c0-\uffff]+/g)||[]).filter(t=>t.length>1||/\d/.test(t)).map(stem);
+
+function chunkText(text,size){
+  const out=[]; let cur='';
+  for(const line of String(text||'').split('\n')){
+    if(!line.trim()) continue;
+    if(cur && cur.length+line.length>size){ out.push(cur); cur=''; }
+    // very long single lines get split
+    let l=line; while(l.length>size*1.6){ out.push(l.slice(0,size)); l=l.slice(size); }
+    cur += (cur?'\n':'')+l;
+  }
+  if(cur) out.push(cur);
+  return out;
+}
+
+const IX = { docs:new Map(), cDoc:[], cSrc:[], cText:[], cLen:[], post:new Map(), vocab:[], avg:1, lc:new Map() };
+
+function buildIndex(){
+  IX.cDoc=[]; IX.cSrc=[]; IX.cText=[]; IX.cLen=[]; IX.post=new Map(); IX.lc=new Map();
+  const add=(docId,src,text,boost)=>{
+    const toks=tokenize(text); if(!toks.length) return;
+    const cid=IX.cDoc.length; IX.cDoc.push(docId); IX.cSrc.push(src); IX.cText.push(text); IX.cLen.push(toks.length);
+    const tf=new Map(); toks.forEach(t=>tf.set(t,(tf.get(t)||0)+1));
+    tf.forEach((n,t)=>{ let e=IX.post.get(t); if(!e){ e={ids:[],tfs:[]}; IX.post.set(t,e); } e.ids.push(cid); e.tfs.push(n*(boost||1)); });
+  };
+  for(const d of IX.docs.values()){
+    add(d.id,-1,d.title+'\n'+d.path+(d.tags&&d.tags.length?'\n'+d.tags.join(' '):''),3);
+    chunkText(d.body,700).forEach(c=>add(d.id,0,c));
+    (d.atts||[]).forEach((a,i)=>{
+      add(d.id,i+1,a.name,2);
+      chunkText(a.text,700).forEach(c=>add(d.id,i+1,c));
+    });
+    IX.lc.set(d.id,(d.title+'\n'+d.path+'\n'+d.body+'\n'+(d.atts||[]).map(a=>a.name+'\n'+(a.text||'')).join('\n')).toLowerCase());
+  }
+  IX.vocab=[...IX.post.keys()];
+  IX.avg=IX.cLen.length?IX.cLen.reduce((a,b)=>a+b,0)/IX.cLen.length:1;
+}
+
+function parseQuery(q){
+  const phrases=[],excl=[],words=[]; const re=/(-?)"([^"]+)"|(-?)(\S+)/g; let m;
+  while((m=re.exec(q||''))){
+    if(m[2]!==undefined){ (m[1]?excl:phrases).push(m[2].toLowerCase().trim()); }
+    else if(m[4]){ if(m[3]&&m[4].length>1) excl.push(m[4].toLowerCase()); else words.push(m[4]); }
+  }
+  const raw=[...words,...phrases.flatMap(x=>x.split(/\s+/))];
+  const terms=[...new Set(raw.flatMap(w=>tokenize(w)))];
+  return {phrases,excl,terms,raw:raw.map(w=>w.toLowerCase().replace(/[^a-z0-9\u00c0-\uffff]/g,'')).filter(Boolean)};
+}
+
+function search(q,o){
+  o=o||{}; const pq=parseQuery(q); if(!pq.terms.length&&!pq.phrases.length) return {pq,res:[]};
+  const N=IX.cDoc.length||1, k1=1.2, b=.75;
+  const docScore=new Map(); // docId -> {best,bestC,sum,seen:Set,top:[]}
+  const chunkScore=new Map();
+  pq.terms.forEach((t,ti)=>{
+    const cands=[[t,1]];
+    if(ti===pq.terms.length-1 && t.length>=3 && !pq.phrases.length){
+      let n=0; for(const v of IX.vocab){ if(v!==t&&v.startsWith(t)){ cands.push([v,.5]); if(++n>=30) break; } }
+    }
+    for(const [term,w] of cands){
+      const e=IX.post.get(term); if(!e) continue;
+      const idf=Math.log(1+(N-e.ids.length+.5)/(e.ids.length+.5));
+      for(let i=0;i<e.ids.length;i++){
+        const c=e.ids[i], s=IX.cSrc[c];
+        if(o.src==='pages'&&s>0) continue; if(o.src==='atts'&&s<=0) continue;
+        const tf=e.tfs[i], sc=w*idf*tf*(k1+1)/(tf+k1*(1-b+b*IX.cLen[c]/IX.avg));
+        chunkScore.set(c,(chunkScore.get(c)||0)+sc);
+        const did=IX.cDoc[c]; let ds=docScore.get(did); if(!ds){ ds={best:0,bestC:-1,sum:0,seen:new Set()}; docScore.set(did,ds); }
+        ds.seen.add(ti);
+      }
+    }
+  });
+  chunkScore.forEach((sc,c)=>{ const ds=docScore.get(IX.cDoc[c]); ds.sum+=sc; if(sc>ds.best){ ds.best=sc; ds.bestC=c; } });
+  const needAll=(o.mode||'all')==='all';
+  let res=[];
+  docScore.forEach((ds,did)=>{
+    const d=IX.docs.get(did); if(!d) return;
+    if(o.nb&&d.nb!==o.nb) return;
+    if(o.sec&&!(d.path===o.sec||d.path.startsWith(o.sec+' › '))) return;
+    if(needAll&&ds.seen.size<pq.terms.length) return;
+    const lc=IX.lc.get(did)||'';
+    if(pq.phrases.some(ph=>!lc.includes(ph))) return;
+    if(pq.excl.some(x=>lc.includes(x))) return;
+    const cov=ds.seen.size/Math.max(1,pq.terms.length);
+    res.push({id:did,score:(ds.best+0.25*(ds.sum-ds.best))*(0.5+cov/2),bestC:ds.bestC});
+  });
+  if(!pq.terms.length){ // phrase-only already handled above (terms derived from phrases) — safety
+    res=[];
+  }
+  if(o.sort==='new') res.sort((a,b)=>(IX.docs.get(b.id).modified||'').localeCompare(IX.docs.get(a.id).modified||''));
+  else if(o.sort==='old') res.sort((a,b)=>(IX.docs.get(a.id).modified||'').localeCompare(IX.docs.get(b.id).modified||''));
+  else res.sort((a,b)=>b.score-a.score);
+  return {pq,res};
+}
+
+function hlRegex(pq){
+  const ws=new Set(); pq.raw.forEach(w=>{ ws.add(w); ws.add(stem(w)); }); pq.phrases.forEach(p=>ws.add(p));
+  const arr=[...ws].filter(w=>w&&w.length>1).sort((a,b)=>b.length-a.length).map(escRe);
+  return arr.length?new RegExp('('+arr.join('|')+')','gi'):null;
+}
+function hl(text,re){
+  if(!re) return esc(text);
+  return String(text).split(re).map((s,i)=>i%2?'<mark>'+esc(s)+'</mark>':esc(s)).join('');
+}
+function snippet(text,re){
+  text=String(text||'').replace(/\s+/g,' ').trim();
+  let pos=0; if(re){ const m=new RegExp(re.source,'i').exec(text); if(m) pos=m.index; }
+  const start=Math.max(0,pos-90), end=Math.min(text.length,pos+190);
+  return (start>0?'… ':'')+hl(text.slice(start,end),re)+(end<text.length?' …':'');
+}
+
+/* ---------- OneNote page parsing ---------- */
+function parsePage(html){
+  const d=new DOMParser().parseFromString(html,'text/html');
+  d.querySelectorAll('script,style').forEach(e=>e.remove());
+  const atts=[];
+  d.querySelectorAll('object[data-attachment]').forEach(o=>{
+    const name=o.getAttribute('data-attachment')||'attachment', url=o.getAttribute('data')||'';
+    const m=/resources\/([^\/]+)\/\$value/.exec(url);
+    atts.push({name,type:o.getAttribute('type')||'',url,rid:m?m[1]:url});
+    o.replaceWith(d.createTextNode(' [attachment: '+name+'] '));
+  });
+  d.querySelectorAll('img').forEach(i=>{ const alt=(i.getAttribute('alt')||'').trim(); i.replaceWith(d.createTextNode(alt?' [image: '+alt+'] ':' ')); });
+  const tags=new Set(); d.querySelectorAll('[data-tag]').forEach(e=>(e.getAttribute('data-tag')||'').split(',').forEach(t=>{ t=t.trim(); if(t) tags.add(t.replace(/^[^:]+:/,m=>m)); }));
+  const links=new Set(); d.querySelectorAll('a[href]').forEach(a=>{ const h=a.getAttribute('href'); if(/^https?:/i.test(h)) links.add(h); });
+  d.querySelectorAll('br').forEach(e=>e.replaceWith(d.createTextNode('\n')));
+  d.querySelectorAll('p,div,li,tr,h1,h2,h3,h4,h5,h6,table,ul,ol').forEach(e=>e.appendChild(d.createTextNode('\n')));
+  d.querySelectorAll('td,th').forEach(e=>e.appendChild(d.createTextNode(' | ')));
+  let body=(d.body?d.body.textContent:'').replace(/[ \t\u00a0]+/g,' ').replace(/ *\n */g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+  if(links.size) body+='\n\nLinks:\n'+[...links].join('\n');
+  return {title:(d.title||'').trim(),body,atts,tags:[...tags],links:[...links]};
+}
+
+/* ---------- attachment text extraction ---------- */
+const loadScript = url => new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=url; s.onload=res; s.onerror=()=>rej(new Error('Could not load '+url)); document.head.appendChild(s); });
+const decodeXml = s => s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+const MAXTXT = 400000;
+async function ensureZip(){ if(!window.JSZip) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'); }
+async function ensurePdf(){
+  if(window.pdfjsLib&&pdfjsLib.__ready) return;
+  if(!window.pdfjsLib) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  const w=await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js')).text();
+  pdfjsLib.GlobalWorkerOptions.workerSrc=URL.createObjectURL(new Blob([w],{type:'text/javascript'}));
+  pdfjsLib.__ready=true;
+}
+async function extractText(name,buf){
+  const ext=(name.split('.').pop()||'').toLowerCase();
+  if(['txt','md','csv','tsv','json','xml','html','htm','log','rtf','ini','yaml','yml','sql','ps1','py','js'].includes(ext)){
+    let t=new TextDecoder('utf-8').decode(buf);
+    if(ext==='html'||ext==='htm') t=t.replace(/<(script|style)[\s\S]*?<\/\1>/gi,' ').replace(/<[^>]+>/g,' ');
+    return t.slice(0,MAXTXT);
+  }
+  if(ext==='pdf'){
+    await ensurePdf();
+    const pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise; const out=[];
+    for(let i=1;i<=Math.min(pdf.numPages,400);i++){
+      const pg=await pdf.getPage(i), tc=await pg.getTextContent();
+      out.push(tc.items.map(x=>x.str).join(' ')); if(out.join('').length>MAXTXT) break;
+    }
+    return out.join('\n').slice(0,MAXTXT);
+  }
+  if(['docx','pptx','xlsx','docm','pptm','xlsm'].includes(ext)){
+    await ensureZip(); const z=await JSZip.loadAsync(buf); let out='';
+    if(ext.startsWith('docx')||ext==='docm'){
+      const f=z.file('word/document.xml'); if(f) out=decodeXml((await f.async('string')).replace(/<\/w:p>/g,'\n').replace(/<w:tab\/>/g,' ').replace(/<[^>]+>/g,''));
+    }else if(ext.startsWith('pptx')||ext==='pptm'){
+      const names=Object.keys(z.files).filter(n=>/^ppt\/(slides|notesSlides)\/[^\/]+\.xml$/.test(n)).sort((a,b)=>(+(a.match(/(\d+)\.xml/)||[0,0])[1])-(+(b.match(/(\d+)\.xml/)||[0,0])[1]));
+      for(const n of names) out+=decodeXml((await z.file(n).async('string')).replace(/<\/a:p>/g,'\n').replace(/<[^>]+>/g,''))+'\n';
+    }else{
+      const f=z.file('xl/sharedStrings.xml'); if(f) out=decodeXml((await f.async('string')).replace(/<\/si>/g,'\n').replace(/<[^>]+>/g,''));
+    }
+    return out.slice(0,MAXTXT);
+  }
+  return null; // unsupported: filename still searchable
+}
+
+/* ---------- auth ---------- */
+let msalApp=null, account=null, tok=null, tokExp=0;
+function clearStuck(){
+  const cid=clientId();
+  for(const st of [localStorage,sessionStorage]){
+    try{ Object.keys(st).filter(k=>k.includes('interaction.status')&&(!/[0-9a-f]{8}-[0-9a-f]{4}/.test(k)||k.includes(cid))).forEach(k=>st.removeItem(k)); }catch(e){}
+  }
+}
+async function initAuth(){
+  const cid=clientId();
+  if(!cid||cid==='PASTE-CLIENT-ID-HERE'){ updateAuthUi(); return; }
+  msalApp=new window.msal.PublicClientApplication({auth:{clientId:cid,authority:'https://login.microsoftonline.com/consumers',redirectUri:REDIRECT,navigateToLoginRequestUrl:false},cache:{cacheLocation:'localStorage'}});
+  try{
+    await msalApp.initialize();
+    const r=await msalApp.handleRedirectPromise();
+    clearStuck();
+    if(r&&r.account) account=r.account; else { const a=msalApp.getAllAccounts(); if(a.length) account=a[0]; }
+    if(account) msalApp.setActiveAccount(account);
+  }catch(e){ clearStuck(); setStatus('Sign-in problem: '+(e.message||e)); }
+  updateAuthUi();
+}
+async function signIn(){
+  if(!msalApp){ openSettings(); return; }
+  clearStuck();
+  const req={scopes:SCOPES,redirectUri:REDIRECT,prompt:'select_account'};
+  try{
+    if(framed){ const r=await msalApp.loginPopup(req); account=r.account; msalApp.setActiveAccount(account); updateAuthUi(); }
+    else await msalApp.loginRedirect(req);
+  }catch(e){ clearStuck(); setStatus('Sign-in failed: '+(e.message||e)); }
+}
+async function signOut(){ if(!msalApp||!account) return; try{ await msalApp.logoutPopup({account,postLogoutRedirectUri:REDIRECT}); }catch(e){} account=null; tok=null; updateAuthUi(); }
+async function token(){
+  if(!msalApp||!account) throw new Error('Not signed in');
+  if(tok&&Date.now()<tokExp-120000) return tok;
+  let r;
+  try{ r=await msalApp.acquireTokenSilent({scopes:SCOPES,account,redirectUri:REDIRECT}); }
+  catch(e){
+    clearStuck();
+    if(framed) r=await msalApp.acquireTokenPopup({scopes:SCOPES,account,redirectUri:REDIRECT});
+    else { await msalApp.acquireTokenRedirect({scopes:SCOPES,account,redirectUri:REDIRECT}); throw new Error('Redirecting to Microsoft sign-in…'); }
+  }
+  tok=r.accessToken; tokExp=r.expiresOn?+new Date(r.expiresOn):Date.now()+3000000; return tok;
+}
+function updateAuthUi(){
+  $('btnAuth').textContent=account?'Sign out':'Sign in';
+  $('pill').textContent=account?('Signed in · '+(account.username||'')):'Local only';
+}
+
+/* ---------- Graph ---------- */
+let cancel=false;
+async function gf(path,o){
+  o=o||{}; const url=path.startsWith('http')?path:GRAPH+path;
+  for(let a=0;a<6;a++){
+    if(cancel) throw new Error('cancelled');
+    const r=await fetch(url,{method:o.method||'GET',body:o.body,headers:Object.assign({Authorization:'Bearer '+await token()},o.headers||{})});
+    if(r.status===429||r.status===503||r.status===504){
+      const ra=+r.headers.get('Retry-After')||Math.min(60,Math.pow(2,a)*2);
+      setProg('Microsoft is throttling requests — waiting '+ra+'s…'); await sleep(ra*1000); continue;
+    }
+    if(!r.ok){ let m=''; try{ m=(await r.json()).error.message; }catch(e){} const err=new Error('Graph '+r.status+': '+(m||r.statusText)); err.status=r.status; throw err; }
+    const as=o.as||'json';
+    return as==='json'?r.json():as==='text'?r.text():as==='buf'?r.arrayBuffer():r;
+  }
+  throw new Error('Too many retries');
+}
+async function listAll(path){
+  let out=[], next=path;
+  while(next){ const j=await gf(next); out=out.concat(j.value||[]); next=j['@odata.nextLink']||null; }
+  return out;
+}
+
+/* ---------- sync ---------- */
+let syncing=false;
+function setStatus(t){ $('foot').textContent=VERSION+(t?'  ·  '+t:''); }
+function setProg(t,frac){ $('prog').style.display='block'; $('progTxt').textContent=t; if(frac!=null) $('progBar').style.width=Math.round(frac*100)+'%'; }
+function hideProg(){ $('prog').style.display='none'; }
+
+async function walkSections(base,nb,prefix,out){
+  const secs=await listAll(base+'/sections?$select=id,displayName');
+  secs.forEach(s=>out.push({id:s.id,name:s.displayName,path:prefix.concat(s.displayName).join(' › '),nb:nb.id,nbName:nb.displayName}));
+  const groups=await listAll(base+'/sectionGroups?$select=id,displayName');
+  for(const g of groups) await walkSections('/me/onenote/sectionGroups/'+g.id,nb,prefix.concat(g.displayName),out);
+}
+
+async function runSync(full){
+  if(syncing) return;
+  if(!account){ setStatus('Sign in first to sync.'); await signIn(); return; }
+  syncing=true; cancel=false; $('btnSync').disabled=true;
+  const errors=[]; let changed=0;
+  try{
+    setProg('Listing notebooks…',0);
+    const nbsAll=await listAll('/me/onenote/notebooks?$select=id,displayName');
+    if(!nbsAll.length) throw new Error('No OneNote notebooks found in this Microsoft account.');
+    let nbs=nbsAll.filter(n=>!settings.notebooks.length||settings.notebooks.includes(n.id));
+    if(!settings.notebooks.length&&nbsAll.length>1){ hideProg(); syncing=false; $('btnSync').disabled=false; openSettings(); await loadNotebookList(nbsAll); setStatus('Tick the notebook(s) to index, then Sync again.'); return; }
+    if(!nbs.length) nbs=nbsAll;
+    const sections=[];
+    for(const nb of nbs){ setProg('Reading structure of “'+nb.displayName+'”…'); await walkSections('/me/onenote/notebooks/'+nb.id,nb,[nb.displayName],sections); }
+    // list pages per section
+    const jobs=[]; const remoteIds=new Set(); const okSections=new Set();
+    let si=0;
+    for(const s of sections){
+      setProg('Listing pages — '+s.path+' ('+(++si)+'/'+sections.length+')',si/sections.length*0.2);
+      try{
+        const pages=await listAll('/me/onenote/sections/'+s.id+'/pages?$top=100&$select=id,title,createdDateTime,lastModifiedDateTime,links');
+        okSections.add(s.id);
+        for(const pg of pages){
+          remoteIds.add(pg.id);
+          const old=IX.docs.get(pg.id);
+          if(!old||full||old.modified!==pg.lastModifiedDateTime||old.v!==SCHEMA) jobs.push({pg,s});
+          else if(old.path!==s.path||old.nbName!==s.nbName){ old.path=s.path; old.nbName=s.nbName; await IDB.put(old); }
+        }
+      }catch(e){ if(e.message==='cancelled') throw e; errors.push(s.path+': '+e.message); }
+    }
+    // removals (only for sections we could list)
+    let removed=0;
+    for(const d of [...IX.docs.values()]){
+      if(nbs.some(n=>n.id===d.nb)&&okSections.has(d.sec)&&!remoteIds.has(d.id)){ IX.docs.delete(d.id); await IDB.del(d.id); removed++; }
+      else if(!nbs.some(n=>n.id===d.nb)&&settings.notebooks.length){ IX.docs.delete(d.id); await IDB.del(d.id); removed++; }
+    }
+    // process changed pages
+    let done=0;
+    const total=jobs.length;
+    await pool(jobs,3,async job=>{
+      try{ await processPage(job.pg,job.s); changed++; }
+      catch(e){ if(e.message==='cancelled') throw e; errors.push((job.pg.title||job.pg.id)+': '+e.message); }
+      done++; setProg('Reading pages '+done+' / '+total+(errors.length?' · '+errors.length+' problem(s)':''),0.2+0.8*(done/Math.max(1,total)));
+    });
+    await IDB.set('meta',{last:Date.now(),errors:errors.slice(0,100)});
+    setStatus('Sync complete: '+changed+' updated, '+removed+' removed'+(errors.length?', '+errors.length+' problem(s) — see Settings › Index health':''));
+  }catch(e){
+    setStatus(e.message==='cancelled'?'Sync cancelled (progress kept — run Sync again to continue)':'Sync failed: '+e.message);
+    await IDB.set('meta',{last:Date.now(),errors:errors.slice(0,100)});
+  }
+  buildIndex(); hideProg(); refreshFilters(); doSearch();
+  syncing=false; $('btnSync').disabled=false;
+  if(changed&&settings.autoSave&&account&&!cancel){ try{ await saveIndexToOneDrive(true); }catch(e){ setStatus('Synced, but saving index to OneDrive failed: '+e.message); } }
+}
+
+async function pool(items,n,fn){ let i=0; await Promise.all(Array.from({length:n},async()=>{ while(i<items.length&&!cancel){ const it=items[i++]; await fn(it); } })); if(cancel) throw new Error('cancelled'); }
+
+async function processPage(pg,sec){
+  const html=await gf('/me/onenote/pages/'+pg.id+'/content?includeIDs=false',{as:'text'});
+  const pp=parsePage(html); const prev=IX.docs.get(pg.id); const prevAtts=new Map(((prev&&prev.atts)||[]).map(a=>[a.rid,a]));
+  const atts=[];
+  for(const a of pp.atts){
+    const old=prevAtts.get(a.rid);
+    if(old&&old.status!=='error'){ atts.push(old); continue; }
+    const rec={rid:a.rid,name:a.name,type:a.type,size:0,text:'',status:'name only'};
+    if(settings.inclAtt&&a.url){
+      try{
+        const buf=await gf(a.url,{as:'buf'}); rec.size=buf.byteLength;
+        if(buf.byteLength>settings.maxAttMB*1048576) rec.status='skipped (too large)';
+        else{
+          const t=await extractText(a.name,buf);
+          if(t===null) rec.status='name only (unsupported type)';
+          else if(!t.trim()) rec.status='no text found (scanned?)';
+          else { rec.text=t; rec.status='ok'; }
+        }
+      }catch(e){ if(e.message==='cancelled') throw e; rec.status='error'; rec.err=e.message; }
+    }
+    atts.push(rec);
+  }
+  const doc={id:pg.id,v:SCHEMA,nb:sec.nb,nbName:sec.nbName,sec:sec.id,path:sec.path,title:pg.title||pp.title||'(untitled)',
+    modified:pg.lastModifiedDateTime,created:pg.createdDateTime,
+    web:pg.links&&pg.links.oneNoteWebUrl?pg.links.oneNoteWebUrl.href:'',client:pg.links&&pg.links.oneNoteClientUrl?pg.links.oneNoteClientUrl.href:'',
+    body:pp.body,tags:pp.tags,atts};
+  IX.docs.set(doc.id,doc); await IDB.put(doc);
+}
+
+/* ---------- OneDrive index backup ---------- */
+const encPath = pth => pth.split('/').map(encodeURIComponent).join('/');
+async function gzip(str){ if(!window.CompressionStream) return new Blob([str]).arrayBuffer(); return new Response(new Blob([str]).stream().pipeThrough(new CompressionStream('gzip'))).arrayBuffer(); }
+async function gunzip(buf){ const u=new Uint8Array(buf); if(u[0]===0x1f&&u[1]===0x8b&&window.DecompressionStream) return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'))).text(); return new TextDecoder().decode(buf); }
+async function saveIndexToOneDrive(quiet){
+  if(!account) throw new Error('Sign in first');
+  setProg('Saving index to OneDrive…',0.5);
+  try{
+    const data=await gzip(JSON.stringify({v:SCHEMA,saved:Date.now(),docs:[...IX.docs.values()]}));
+    const path=encPath(settings.indexPath);
+    if(data.byteLength<4000000){
+      await gf('/me/drive/root:/'+path+':/content',{method:'PUT',body:data,headers:{'Content-Type':'application/octet-stream'}});
+    }else{
+      const s=await gf('/me/drive/root:/'+path+':/createUploadSession',{method:'POST',body:JSON.stringify({item:{'@microsoft.graph.conflictBehavior':'replace'}}),headers:{'Content-Type':'application/json'}});
+      const CH=3276800; // multiple of 320 KiB
+      for(let o=0;o<data.byteLength;o+=CH){
+        const part=data.slice(o,Math.min(o+CH,data.byteLength));
+        const r=await fetch(s.uploadUrl,{method:'PUT',body:part,headers:{'Content-Range':'bytes '+o+'-'+(o+part.byteLength-1)+'/'+data.byteLength}});
+        if(!r.ok&&r.status!==202) throw new Error('Upload failed '+r.status);
+        setProg('Saving index to OneDrive…',o/data.byteLength);
+      }
+    }
+    setStatus('Index saved to OneDrive ('+(data.byteLength/1048576).toFixed(1)+' MB)');
+  } finally { hideProg(); }
+}
+async function loadIndexFromOneDrive(){
+  if(!account) throw new Error('Sign in first');
+  setProg('Loading index from OneDrive…',0.5);
+  try{
+    const buf=await gf('/me/drive/root:/'+encPath(settings.indexPath)+':/content',{as:'buf'});
+    const j=JSON.parse(await gunzip(buf));
+    await IDB.clear(); IX.docs=new Map();
+    for(const d of j.docs){ IX.docs.set(d.id,d); await IDB.put(d); }
+    buildIndex(); refreshFilters(); doSearch(); setStatus('Loaded '+j.docs.length+' pages from OneDrive');
+  }finally{ hideProg(); }
+}
+
+/* ---------- UI ---------- */
+let state={src:'all',limit:50,sel:null,last:null};
+function opts(){ return {nb:$('nbSel').value,sec:$('secSel').value,src:state.src,mode:$('modeSel').value,sort:$('sortSel').value}; }
+
+function refreshFilters(){
+  const nb=$('nbSel').value, sec=$('secSel').value;
+  const nbs=new Map(); IX.docs.forEach(d=>nbs.set(d.nb,d.nbName));
+  $('nbSel').innerHTML='<option value="">All notebooks</option>'+[...nbs].sort((a,b)=>a[1].localeCompare(b[1])).map(([i,n])=>'<option value="'+esc(i)+'">'+esc(n)+'</option>').join('');
+  $('nbSel').value=nbs.has(nb)?nb:'';
+  const cur=$('nbSel').value, paths=new Map();
+  IX.docs.forEach(d=>{ if(!cur||d.nb===cur) paths.set(d.path,(paths.get(d.path)||0)+1); });
+  $('secSel').innerHTML='<option value="">All sections</option>'+[...paths].sort((a,b)=>a[0].localeCompare(b[0])).map(([pth,n])=>'<option value="'+esc(pth)+'">'+esc(pth)+' ('+n+')</option>').join('');
+  $('secSel').value=paths.has(sec)?sec:'';
+}
+
+function doSearch(){
+  const q=$('q').value.trim(), box=$('results'); state.limit=50;
+  if(!IX.docs.size){
+    box.innerHTML='<div class="empty"><b>Nothing indexed yet.</b><br>Sign in and press <b>Sync</b> to read your OneNote notebook.<br><span class="small">First sync can take a while for large notebooks — it reads every page and attachment, then only changes after that.</span></div>'; return;
+  }
+  const o=opts();
+  if(!q){
+    let docs=[...IX.docs.values()].filter(d=>(!o.nb||d.nb===o.nb)&&(!o.sec||d.path===o.sec||d.path.startsWith(o.sec+' › '))).sort((a,b)=>(b.modified||'').localeCompare(a.modified||''));
+    const nAtt=[...IX.docs.values()].reduce((n,d)=>n+(d.atts||[]).length,0);
+    state.last={pq:{raw:[],phrases:[]},res:docs.map(d=>({id:d.id,bestC:-1,score:0}))};
+    box.innerHTML='<p class="sum">'+IX.docs.size+' pages · '+nAtt+' attachments indexed. Showing recently edited.</p>'+renderList(state.last,50)+
+      '<div class="empty tips"><b>Search tips</b><br>• <code>"exact phrase"</code> for phrases<br>• <code>-word</code> to exclude<br>• switch to <b>Attachments</b> to search only inside attached files<br>• “Any word” relaxes matching</div>';
+    bindResults(); return;
+  }
+  const t0=performance.now(); state.last=search(q,o); const r=state.last;
+  box.innerHTML='<p class="sum">'+r.res.length+' page'+(r.res.length===1?'':'s')+' · '+Math.round(performance.now()-t0)+' ms</p>'+
+    (r.res.length?renderList(r,state.limit):'<div class="empty">No matches. Try “Any word”, fewer words, or a different section.</div>');
+  bindResults();
+}
+function renderList(r,limit){
+  const re=hlRegex(r.pq); let h='';
+  r.res.slice(0,limit).forEach(x=>{
+    const d=IX.docs.get(x.id); if(!d) return;
+    let badge='',snip='';
+    if(x.bestC>=0){
+      const src=IX.cSrc[x.bestC];
+      if(src>0&&d.atts[src-1]) badge='<span class="badge">📎 '+esc(d.atts[src-1].name)+'</span>';
+      snip=snippet(src===-1?d.body.slice(0,300):IX.cText[x.bestC],re);
+    }else snip=esc(d.body.replace(/\s+/g,' ').slice(0,160));
+    h+='<div class="res'+(state.sel===d.id?' sel':'')+'" data-id="'+esc(d.id)+'"><h3>'+hl(d.title,re)+'</h3><div class="crumb">'+esc(d.path)+' · '+fmtDate(d.modified)+'</div><div class="snip">'+badge+snip+'</div></div>';
+  });
+  if(r.res.length>limit) h+='<button class="btn" id="more" style="width:100%">Show more ('+(r.res.length-limit)+' left)</button>';
+  return h;
+}
+function bindResults(){
+  document.querySelectorAll('.res').forEach(e=>e.onclick=()=>openDoc(e.dataset.id));
+  const m=$('more'); if(m) m.onclick=()=>{ state.limit+=50; const box=$('results'); const sum=box.querySelector('.sum').outerHTML; box.innerHTML=sum+renderList(state.last,state.limit); bindResults(); };
+}
+
+function openDoc(id){
+  const d=IX.docs.get(id); if(!d) return; state.sel=id;
+  document.querySelectorAll('.res').forEach(e=>e.classList.toggle('sel',e.dataset.id===id));
+  const re=state.last?hlRegex(state.last.pq):null;
+  let h='<button class="btn" id="back">← Results</button><h2>'+hl(d.title,re)+'</h2><div class="crumb">'+esc(d.path)+' · edited '+fmtDate(d.modified)+(d.tags&&d.tags.length?' · '+d.tags.map(t=>'<span class="badge">'+esc(t)+'</span>').join(''):'')+'</div>';
+  h+='<div class="rbar">'+(d.web?'<a class="btn pri" target="_blank" rel="noopener" href="'+esc(d.web)+'">Open in OneNote (web)</a>':'')+(d.client?'<a class="btn" href="'+esc(d.client)+'">Open in OneNote app</a>':'')+'</div>';
+  h+='<div class="txt">'+hl(d.body,re)+'</div>';
+  (d.atts||[]).forEach((a,i)=>{
+    const has=a.text&&a.text.length; const hit=re&&has&&new RegExp(re.source,'i').test(a.text);
+    const shown=has?a.text.slice(0,30000):'';
+    h+='<details'+(hit?' open':'')+'><summary>📎 '+esc(a.name)+' <span class="small '+(a.status==='ok'?'ok':(a.status==='error'?'warn':''))+'">— '+esc(a.status)+(a.size?' · '+(a.size/1024).toFixed(0)+' KB':'')+'</span></summary>'+
+      (has?'<div class="txt">'+hl(shown,re)+(a.text.length>30000?'\n… ('+(a.text.length-30000)+' more characters not shown)':'')+'</div>':'<div class="small">'+(a.err?esc(a.err):'No searchable text from this file.')+'</div>')+'</details>';
+  });
+  $('reader').innerHTML=h; document.body.classList.add('reading');
+  const b=$('back'); if(b) b.onclick=()=>document.body.classList.remove('reading');
+  const mk=$('reader').querySelector('mark'); if(mk) mk.scrollIntoView({block:'center'}); else $('reader').scrollTop=0;
+}
+
+/* ---------- settings ---------- */
+async function loadNotebookList(list){
+  try{
+    list=list||await listAll('/me/onenote/notebooks?$select=id,displayName');
+    $('nbList').innerHTML=list.map(n=>'<label style="font-weight:400"><input type="checkbox" class="nbck" value="'+esc(n.id)+'" '+((!settings.notebooks.length||settings.notebooks.includes(n.id))&&(settings.notebooks.length||list.length===1)?'checked':(settings.notebooks.includes(n.id)?'checked':''))+'> '+esc(n.displayName)+'</label>').join('');
+  }catch(e){ $('nbList').textContent='Could not load notebooks: '+e.message+(account?'':' (sign in first)'); }
+}
+function openSettings(){
+  $('setCid').value=settings.clientId||(DEFAULT_CLIENT_ID==='PASTE-CLIENT-ID-HERE'?'':DEFAULT_CLIENT_ID);
+  $('redir').textContent=REDIRECT; $('setAtt').checked=settings.inclAtt; $('setMax').value=settings.maxAttMB; $('setPath').value=settings.indexPath; $('setAuto').checked=settings.autoSave;
+  const meta=null; IDB.get('meta').then(m=>{
+    const att=[]; IX.docs.forEach(d=>(d.atts||[]).forEach(a=>{ if(a.status!=='ok') att.push(d.title+' › '+a.name+' — '+a.status+(a.err?' ('+a.err+')':'')); }));
+    $('healthBody').innerHTML='<p>Last sync: '+(m&&m.last?new Date(m.last).toLocaleString():'never')+'</p>'+
+      '<p><b>Sync problems ('+((m&&m.errors||[]).length)+')</b></p>'+(m&&m.errors&&m.errors.length?'<ul>'+m.errors.map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>':'<p>None.</p>')+
+      '<p><b>Attachments without searchable text ('+att.length+')</b> — filename is still searchable</p>'+(att.length?'<ul>'+att.slice(0,200).map(e=>'<li>'+esc(e)+'</li>').join('')+'</ul>':'<p>None.</p>');
+  });
+  if(!$('dlg').open) $('dlg').showModal();
+}
+async function closeSettings(){
+  const nc=[...document.querySelectorAll('.nbck')];
+  const prevCid=clientId();
+  settings.clientId=$('setCid').value.trim(); settings.inclAtt=$('setAtt').checked; settings.maxAttMB=Math.max(1,+$('setMax').value||25);
+  settings.indexPath=$('setPath').value.trim()||DEFAULT_INDEX_PATH; settings.autoSave=$('setAuto').checked;
+  if(nc.length) settings.notebooks=nc.filter(c=>c.checked).map(c=>c.value);
+  saveSettings(); $('dlg').close();
+  if(clientId()!==prevCid){ location.reload(); }
+}
+
+/* ---------- wiring ---------- */
+function wire(){
+  let t; $('q').addEventListener('input',()=>{ clearTimeout(t); t=setTimeout(doSearch,150); });
+  ['nbSel','secSel','modeSel','sortSel'].forEach(id=>$(id).addEventListener('change',()=>{ if(id==='nbSel') refreshFilters(); doSearch(); }));
+  $('srcSeg').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; state.src=b.dataset.v; document.querySelectorAll('#srcSeg button').forEach(x=>x.classList.toggle('on',x===b)); doSearch(); });
+  $('btnSync').onclick=()=>runSync(false);
+  $('btnCancel').onclick=()=>{ cancel=true; };
+  $('btnAuth').onclick=()=>account?signOut():signIn();
+  $('btnSet').onclick=openSettings; $('btnDone').onclick=closeSettings;
+  $('btnLoadNb').onclick=()=>loadNotebookList();
+  $('btnFull').onclick=()=>{ $('dlg').close(); runSync(true); };
+  $('btnSave').onclick=async()=>{ settings.indexPath=$('setPath').value.trim()||DEFAULT_INDEX_PATH; saveSettings(); try{ await saveIndexToOneDrive(); }catch(e){ setStatus('Save failed: '+e.message); } };
+  $('btnLoad').onclick=async()=>{ settings.indexPath=$('setPath').value.trim()||DEFAULT_INDEX_PATH; saveSettings(); try{ await loadIndexFromOneDrive(); $('dlg').close(); }catch(e){ setStatus('Load failed: '+e.message); } };
+  $('btnClear').onclick=async()=>{ if(!confirm('Clear the local index? You can re-sync or load it from OneDrive afterwards.')) return; await IDB.clear(); IX.docs=new Map(); buildIndex(); refreshFilters(); doSearch(); $('dlg').close(); };
+  document.addEventListener('keydown',e=>{ if(e.key==='/'&&document.activeElement.tagName!=='INPUT'&&!$('dlg').open){ e.preventDefault(); $('q').focus(); } if(e.key==='Escape') document.body.classList.remove('reading'); });
+}
+
+async function init(){
+  // MSAL's own hidden frames / popups must do nothing else
+  if(/[#&](code|error|state)=/.test(location.hash)&&(window.opener&&window.opener!==window||framed&&window.name&&window.name.startsWith('msal'))) return;
+  wire(); setStatus('');
+  try{ await IDB.open(); const all=await IDB.all(); all.forEach(d=>IX.docs.set(d.id,d)); }catch(e){ setStatus('Local storage unavailable: '+e.message); }
+  buildIndex(); refreshFilters(); doSearch();
+  await initAuth();
+  const m=await IDB.get('meta').catch(()=>null);
+  setStatus(m&&m.last?'Last sync '+new Date(m.last).toLocaleString():'');
+  if(!IX.docs.size&&account) setStatus('Press Sync to build the index (or Settings › Load index from OneDrive if you already built it on another device)');
+  if(clientId()===''||clientId()==='PASTE-CLIENT-ID-HERE') $('results').innerHTML='<div class="empty"><b>One-time setup needed</b><br>Open ⚙ Settings and paste the client ID of your Azure app registration.</div>';
+}
+if(!window.__TEST) init();
+</script>
+</body>
+</html>
